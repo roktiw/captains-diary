@@ -1,0 +1,58 @@
+name: Verify public desktop release
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing diary-vX.Y.Z-alpha.SHA release tag to verify"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verifier-tests:
+    name: Policy unit tests (CPU only)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout public distribution policy
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: main
+      - name: Execute negative release tests
+        run: python3 -m unittest discover -s tests -v
+
+  release-assets:
+    name: Verify published assets and native evidence
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
+    needs: verifier-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Checkout verifier
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: main
+      - name: Download all public release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir release-assets
+      - name: Validate SHA256 and exact source/native platform receipts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/verify_release.py --dir release-assets --tag "$RELEASE_TAG"

@@ -4,6 +4,10 @@
 name: Native desktop build (private GitLab source)
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/native-desktop-build.yml"
   workflow_dispatch:
     inputs:
       source_sha:
@@ -19,7 +23,60 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Runs automatically when this workflow changes. No private GitLab source,
+  # project token, or public ZIP artifacts are used in this independent probe.
+  runner-probe:
+    name: Host toolchain probe ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: macos-arm64, runner: macos-15 }
+          - { platform: linux-x64, runner: ubuntu-24.04 }
+          - { platform: windows-x64, runner: windows-2025 }
+    steps:
+      - name: Verify the actual native runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$RUNNER_OS/$RUNNER_ARCH" in
+            macOS/ARM64|Linux/X64|Windows/X64) ;;
+            *) echo "::error::Unexpected runner $RUNNER_OS/$RUNNER_ARCH"; exit 1 ;;
+          esac
+          echo "Native runner: $RUNNER_OS/$RUNNER_ARCH"
+      - name: Prepare Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Prepare Bun 1.3.10
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.3.10"
+      - name: Compile and run a native Bun smoke executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(bun --version)" = "1.3.10"
+          src="$RUNNER_TEMP/native-probe.ts"
+          exe="$RUNNER_TEMP/native-probe"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then exe="$exe.exe"; fi
+          printf '%s\n' 'console.log("NATIVE_PROBE_OK")' > "$src"
+          bun build "$src" --compile --outfile "$exe"
+          test -f "$exe"
+          output="$("$exe")"
+          [[ "$output" == "NATIVE_PROBE_OK" ]] || {
+            echo "::error::Native Bun executable failed on $RUNNER_OS/$RUNNER_ARCH"
+            exit 1
+          }
+          echo "Build toolchain PASS: $RUNNER_OS/$RUNNER_ARCH"
+
+  # Real Captain's Diary builds require an explicit source SHA and secrets.
   desktop:
+    if: github.event_name == 'workflow_dispatch'
+    needs: runner-probe
     name: Native ${{ matrix.platform }} build and smoke
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90

@@ -14,10 +14,19 @@ class NativeBuildWorkflowPolicy(unittest.TestCase):
     def setUpClass(cls):
         cls.text = WORKFLOW.read_text(encoding="utf-8")
 
-    def test_manual_only_and_least_permissions(self):
+    def test_private_source_job_is_manual_only_and_least_permissions(self):
         self.assertRegex(self.text, r"(?m)^  workflow_dispatch:")
-        self.assertNotRegex(self.text, r"(?m)^  (?:push|pull_request|schedule|repository_dispatch):")
+        self.assertRegex(self.text, r"(?m)^  push:")
+        self.assertIn('      - ".github/workflows/native-desktop-build.yml"', self.text)
+        self.assertIn("if: github.event_name == 'workflow_dispatch'", self.text)
+        self.assertNotRegex(self.text, r"(?m)^  (?:pull_request|schedule|repository_dispatch):")
         self.assertRegex(self.text, r"(?m)^permissions:\n  contents: read")
+
+    def test_secretless_probe_compiles_on_all_three_platforms(self):
+        self.assertIn("runner-probe:", self.text)
+        self.assertIn('bun build "$src" --compile --outfile "$exe"', self.text)
+        self.assertIn("NATIVE_PROBE_OK", self.text)
+        self.assertIn("needs: runner-probe", self.text)
 
     def test_source_is_private_gitlab_main_at_exact_sha(self):
         self.assertIn("https://gitlab.com/roktiw/captains-diary.git", self.text)

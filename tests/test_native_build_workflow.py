@@ -28,6 +28,16 @@ class NativeBuildWorkflowPolicy(unittest.TestCase):
         self.assertIn("NATIVE_PROBE_OK", self.text)
         self.assertIn("needs: runner-probe", self.text)
 
+    def test_forge_packaging_probe_is_synthetic_and_public_safe(self):
+        self.assertIn("Package synthetic Electron Forge ZIP natively", self.text)
+        self.assertIn('"electron": "41.1.1"', self.text)
+        self.assertIn('"@electron-forge/cli": "7.11.1"', self.text)
+        self.assertIn('"@electron-forge/maker-zip": "7.11.1"', self.text)
+        self.assertIn("./node_modules/.bin/electron-forge make", self.text)
+        self.assertIn("FORGE_PROBE_PASS", self.text)
+        self.assertIn("captainsDiaryBuilt: false", self.text)
+        self.assertIn("synthetic: true", self.text)
+
     def test_source_is_private_gitlab_main_at_exact_sha(self):
         self.assertIn("https://gitlab.com/roktiw/captains-diary.git", self.text)
         self.assertIn("DIARY_GITLAB_READ_USER", self.text)

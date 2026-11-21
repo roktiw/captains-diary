@@ -74,11 +74,16 @@ covers the existing manual publisher and must not be silently bypassed.
 
 ## Automatic public-runner toolchain verification
 
-A small **source-free** native Bun compile probe runs automatically when
-`.github/workflows/native-desktop-build.yml` is updated on public GitHub
-`main`. This checks GitHub-hosted macOS ARM64, Windows x64 and Linux x64
-are ready to compile and execute a Bun native binary. It does **not** claim
-to build Captain's Diary or grant access to private GitLab source.
+A **source-free** native Bun compilation and **synthetic Electron Forge ZIP**
+packaging probe runs automatically when
+`.github/workflows/native-desktop-build.yml` changes on public GitHub
+`main`. It tests GitHub-hosted macOS ARM64, Windows x64 and Linux x64 with
+the same Electron/Forge major versions used by the private application,
+including ZIP packaging and a SHA256 receipt printed to the job log.
+
+This intentionally minimal probe does **not** contain or compile Captain's
+Diary source, does not test the real Markdown editor, does not claim notarization
+or GUI end-to-end results, and never publishes its synthetic ZIP.
 
 Actual Captain's Diary desktop jobs remain **manual** and require the exact
 protected GitLab main SHA and two GitHub Actions repository secrets above.

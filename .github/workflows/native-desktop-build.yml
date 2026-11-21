@@ -73,6 +73,73 @@ jobs:
           }
           echo "Build toolchain PASS: $RUNNER_OS/$RUNNER_ARCH"
 
+      # This public fixture is intentionally synthetic; never package private
+      # GitLab source in an automatic public GitHub push event.
+      - name: Package synthetic Electron Forge ZIP natively
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe="$RUNNER_TEMP/diary-forge-probe"
+          mkdir -p "$probe"
+          cd "$probe"
+          cat > package.json <<'PACKAGE'
+          {
+            "name": "captains-diary-forge-probe",
+            "version": "0.0.1",
+            "private": true,
+            "description": "Synthetic Electron Forge packaging admission test. Not Captain's Diary.",
+            "author": "Captain's Diary CI",
+            "main": "main.cjs",
+            "devDependencies": {
+              "electron": "41.1.1",
+              "@electron-forge/cli": "7.11.1",
+              "@electron-forge/maker-zip": "7.11.1"
+            }
+          }
+          PACKAGE
+          cat > forge.config.cjs <<'FORGE'
+          module.exports = {
+            packagerConfig: {asar: true},
+            makers: [{name: '@electron-forge/maker-zip'}]
+          }
+          FORGE
+          cat > main.cjs <<'APP'
+          const {app, BrowserWindow} = require('electron');
+          app.whenReady().then(() => {
+            const window = new BrowserWindow({width: 480, height: 320});
+            window.loadURL('data:text/html,<h1>Forge synthetic probe</h1>');
+          });
+          APP
+          npm install --no-audit --no-fund --save-exact
+          ./node_modules/.bin/electron-forge make
+          node <<'VERIFY'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const crypto = require('node:crypto');
+          const root = path.resolve('out/make/zip');
+          function zipFiles(dir) {
+            return fs.readdirSync(dir, {withFileTypes: true}).flatMap(entry => {
+              const file = path.join(dir, entry.name);
+              return entry.isDirectory() ? zipFiles(file) : entry.isFile() && file.endsWith('.zip') ? [file] : [];
+            });
+          }
+          const files = zipFiles(root);
+          if (files.length !== 1) throw new Error('Expected exactly one Forge ZIP, got ' + files.length);
+          const file = files[0];
+          const bytes = fs.statSync(file).size;
+          if (bytes < 1000000) throw new Error('Unexpectedly small Forge ZIP');
+          const sha256 = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+          console.log(JSON.stringify({
+            result: 'FORGE_PROBE_PASS',
+            platform: process.platform,
+            arch: process.arch,
+            bytes,
+            sha256,
+            synthetic: true,
+            captainsDiaryBuilt: false
+          }));
+          VERIFY
+
   # Real Captain's Diary builds require an explicit source SHA and secrets.
   desktop:
     if: github.event_name == 'workflow_dispatch'

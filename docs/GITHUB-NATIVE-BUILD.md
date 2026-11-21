@@ -71,3 +71,14 @@ covers the existing manual publisher and must not be silently bypassed.
 - **No ZIP download in GitHub Actions:** intentional. Only sanitized receipts
   are public. Use approved protected release promotion for packages.
 - **Auto-update:** separate feature, not enabled by this workflow.
+
+## Automatic public-runner toolchain verification
+
+A small **source-free** native Bun compile probe runs automatically when
+`.github/workflows/native-desktop-build.yml` is updated on public GitHub
+`main`. This checks GitHub-hosted macOS ARM64, Windows x64 and Linux x64
+are ready to compile and execute a Bun native binary. It does **not** claim
+to build Captain's Diary or grant access to private GitLab source.
+
+Actual Captain's Diary desktop jobs remain **manual** and require the exact
+protected GitLab main SHA and two GitHub Actions repository secrets above.

@@ -16,6 +16,17 @@ This is the **public production distribution repository** for Captain's Diary, a
 
 Portable ZIPs are the *initial packaging format*, **not** DMG/MSI/AppImage installers. Stable end-user releases will require additional signing, notarization and installer work. Windows cross-compilation on Linux alone does not count as a Windows test.
 
+## GitHub-hosted builds (manual, fail-closed)
+
+GitHub Actions can build and natively smoke-test the protected **private GitLab**
+source on macOS ARM64, Linux x64, and Windows x64 without mirroring source
+into this public repository. It requires a project-scoped GitLab read-only
+deploy token stored in GitHub Actions secrets and an exact GitLab main SHA.
+The workflow publishes **sanitized JSON receipts only**, never unreviewed
+Electron ZIPs. Read the [setup and runbook](docs/GITHUB-NATIVE-BUILD.md), then
+[run the native build](https://github.com/roktiw/captains-diary/actions/workflows/native-desktop-build.yml).
+
+
 ## Download safely
 
 1. Open [Releases](https://github.com/roktiw/captains-diary/releases) and select a published release. Until the first approved promotion there are no downloads.

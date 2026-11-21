@@ -20,7 +20,7 @@ class NativeBuildWorkflowPolicy(unittest.TestCase):
         self.assertIn('      - ".github/workflows/native-desktop-build.yml"', self.text)
         self.assertIn("if: github.event_name == 'workflow_dispatch'", self.text)
         self.assertNotRegex(self.text, r"(?m)^  (?:pull_request|schedule|repository_dispatch):")
-        self.assertRegex(self.text, r"(?m)^permissions:\\n  contents: read")
+        self.assertRegex(self.text, r"(?m)^permissions:\n  contents: read")
 
     def test_secretless_probe_compiles_on_all_three_platforms(self):
         self.assertIn("runner-probe:", self.text)
